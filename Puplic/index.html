@@ -9,7 +9,6 @@
 </head>
 <body>
 <div id="app">
-    <!-- شاشة الإيقاظ -->
     <div id="wakeupScreen" class="screen active">
         <h1>🕵️ مافيا</h1>
         <p id="wakeupStatus">جاري الاتصال بالسيرفر...</p>
@@ -17,33 +16,13 @@
         <button id="wakeupRetry" class="hidden">إعادة المحاولة</button>
         <div class="spinner hidden" id="spinner"></div>
     </div>
-
-    <!-- اللوبي -->
     <div id="lobbyScreen" class="screen hidden">
         <h1>مافيا</h1>
         <div id="menu">
             <button id="btnCreate">إنشاء غرفة</button>
             <button id="btnJoin">انضمام لغرفة</button>
-    
+            <button id="btnInstructions">كيف ألعب؟</button>
         </div>
-        <!-- ضمن lobbyScreen -->
-<div id="menu">
-    <button id="btnCreate">إنشاء غرفة</button>
-    <button id="btnJoin">انضمام لغرفة</button>
-    <button id="btnInstructions">كيف ألعب؟</button>
-</div>
-
-<!-- ... النماذج الأخرى ... -->
-
-<!-- لوحة التعليمات -->
-<div id="instructionsPanel" class="hidden" style="background:#222; padding:1rem; margin-top:1rem;">
-    <h3>الأدوار:</h3>
-    <p><strong>المافيا:</strong> يقتل ليلاً. إذا تعاونوا، يختارون ضحية واحدة.</p>
-    <p><strong>الطبيب:</strong> يحمي شخصاً كل ليلة (يمكنه حماية نفسه).</p>
-    <p><strong>الشرطي:</strong> يسأل الراوي عن دور شخص واحد كل ليلة.</p>
-    <p><strong>المواطن:</strong> ليس له قدرة، لكنه يصوت نهاراً.</p>
-    <button id="closeInstructions" class="backBtn">إغلاق</button>
-</div>
         <div id="createForm" class="form hidden">
             <h2>إعدادات الغرفة</h2>
             <input type="text" id="createName" placeholder="اسمك" maxlength="15">
@@ -68,21 +47,24 @@
             <button id="btnStart" class="hidden">بدء اللعبة الآن</button>
             <button id="btnLeave">مغادرة</button>
         </div>
+        <div id="instructionsPanel" class="hidden" style="background:#222; padding:1rem; margin-top:1rem;">
+            <h3>الأدوار:</h3>
+            <p><strong>المافيا:</strong> يقتل ليلاً. إذا تعاونوا، يختارون ضحية واحدة.</p>
+            <p><strong>الطبيب:</strong> يحمي شخصاً كل ليلة (يمكنه حماية نفسه).</p>
+            <p><strong>الشرطي:</strong> يسأل الراوي عن دور شخص واحد كل ليلة.</p>
+            <p><strong>المواطن:</strong> ليس له قدرة، لكنه يصوت نهاراً.</p>
+            <button id="closeInstructions" class="backBtn">إغلاق</button>
+        </div>
     </div>
-
-    <!-- شاشة اللعبة (كل المراحل) -->
     <div id="gameScreen" class="screen hidden">
-        <!-- سواد -->
         <div id="blackScreen" class="game-panel active">
             <p id="narratorMsg"></p>
         </div>
-        <!-- مافيا منفرد -->
         <div id="mafiaSoloPanel" class="game-panel hidden">
             <h2>أنت المافيا!</h2>
             <p id="mafiaSoloMsg"></p>
             <div id="mafiaSoloList" class="btn-list"></div>
         </div>
-        <!-- مافيا متعدد -->
         <div id="mafiaMultiPanel" class="game-panel hidden">
             <h2>أنت المافيا</h2>
             <p id="mafiaTeam"></p>
@@ -93,31 +75,26 @@
             <button id="mafiaReadyBtn" disabled>جاهز للتصويت (مقفل 30 ث)</button>
             <p id="mafiaReadyStatus"></p>
         </div>
-        <!-- تصويت المافيا على الهدف -->
         <div id="mafiaVotePanel" class="game-panel hidden">
             <h2>اختاروا الهدف</h2>
             <p>يجب الاتفاق</p>
             <div id="mafiaVoteList" class="btn-list"></div>
         </div>
-        <!-- دكتور -->
         <div id="doctorPanel" class="game-panel hidden">
             <h2>الطبيب</h2>
             <p>اختر من تحمي:</p>
             <div id="doctorList" class="btn-list"></div>
         </div>
-        <!-- شرطي -->
         <div id="policePanel" class="game-panel hidden">
             <h2>الشرطي</h2>
             <p>اختر من تستفسر عن دوره:</p>
             <div id="policeList" class="btn-list"></div>
         </div>
-        <!-- نتيجة التحقيق -->
         <div id="investPanel" class="game-panel hidden">
             <h2>نتيجة التحقيق</h2>
             <p id="investResult"></p>
             <button id="investOk">متابعة</button>
         </div>
-        <!-- التصويت العام -->
         <div id="votePanel" class="game-panel hidden">
             <h2>التصويت</h2>
             <p id="voteMsg"></p>
@@ -125,19 +102,16 @@
             <button id="skipVote">تخطي</button>
             <p id="voteStatus"></p>
         </div>
-        <!-- نهاية اللعبة -->
         <div id="gameOverPanel" class="game-panel hidden">
             <h2 id="gameOverTitle"></h2>
             <button id="playAgain">لعبة جديدة</button>
         </div>
-        <!-- سجل الأحداث -->
         <div id="logBox">
             <h4>الأحداث</h4>
             <ul id="logList"></ul>
         </div>
     </div>
 </div>
-
 <script src="/socket.io/socket.io.js"></script>
 <script src="main.js"></script>
 </body>
