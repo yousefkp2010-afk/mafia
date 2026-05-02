@@ -7,10 +7,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// 1) تأكد من أن المجلد public هو نفسه الذي وضعت فيه index.html و sw.js
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 2) مسار ping
 app.get('/ping', (req, res) => res.json({ awake: true }));
 
+// 3) مسار احتياطي: لو أي شخص فتح الرابط الرئيسي، نعطيه index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 const rooms = {};
 
 // أدوار اللعبة
