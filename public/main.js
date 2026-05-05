@@ -3,17 +3,20 @@ let playerToken = sessionStorage.getItem('playerToken');
 let roomId = sessionStorage.getItem('roomId');
 let myName = '', myRole = '', myAlive = true;
 let isHost = false;
-let countdownInterval = null;
 
-// ---------- شاشات ----------
-const wakeupScreen = document.getElementById('wakeupScreen');
-const lobbyScreen = document.getElementById('lobbyScreen');
-const gameScreen = document.getElementById('gameScreen');
-const allGamePanels = document.querySelectorAll('.game-panel');
-function hideGamePanels() { allGamePanels.forEach(p => p.classList.add('hidden')); }
-function showGamePanel(id) { hideGamePanels(); document.getElementById(id).classList.remove('hidden'); }
+// ------------------ دوال المساعدة ------------------
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(screenId);
+    if (el) el.classList.add('active');
+}
 
-// ---------- تنبيهات ----------
+function showGamePanel(panelId) {
+    document.querySelectorAll('#gameScreen .game-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById(panelId);
+    if (panel) panel.style.display = 'block';
+}
+
 function notifyPlayer() {
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     try {
@@ -25,29 +28,29 @@ function notifyPlayer() {
     } catch(e) {}
 }
 
-function showError(msg) {
-    alert(msg); // بسيط، يمكن تحويله لـ div
+function clearSession() {
+    sessionStorage.removeItem('playerToken');
+    sessionStorage.removeItem('roomId');
+    playerToken = null; roomId = null;
 }
 
-// ---------- شاشة الإيقاظ ----------
+// ------------------ شاشة الإيقاظ ------------------
 function showWakeup() {
-    lobbyScreen.classList.add('hidden');
-    gameScreen.classList.add('hidden');
-    wakeupScreen.classList.add('active');
+    showScreen('wakeupScreen');
     document.getElementById('wakeupStatus').textContent = 'جاري الاتصال...';
-    document.getElementById('wakeupError').classList.add('hidden');
-    document.getElementById('wakeupRetry').classList.add('hidden');
+    document.getElementById('wakeupError').style.display = 'none';
+    document.getElementById('wakeupRetry').style.display = 'none';
+    document.getElementById('spinner').style.display = 'none';
     startPinging();
 }
+
 let pingInterval;
 function startPinging() {
     const attempt = () => fetch('/ping').then(r => {
         if (r.ok) {
             clearInterval(pingInterval);
             document.getElementById('wakeupStatus').textContent = 'تم الاتصال!';
-            wakeupScreen.classList.remove('active');
-            lobbyScreen.classList.add('active');
-            initLobby();
+            setTimeout(() => showScreen('lobbyScreen'), 500);
         }
     }).catch(() => {});
     attempt();
@@ -55,108 +58,101 @@ function startPinging() {
 }
 document.getElementById('wakeupRetry').onclick = startPinging;
 
-// ---------- اللوبي ----------
-function initLobby() {
-    document.getElementById('menu').classList.remove('hidden');
-    document.getElementById('createForm').classList.add('hidden');
-    document.getElementById('joinForm').classList.add('hidden');
-    document.getElementById('waitingRoom').classList.add('hidden');
-    document.getElementById('instructionsPanel').classList.add('hidden');
-    isHost = false;
-}
-
+// ------------------ اللوبي ------------------
 document.getElementById('btnCreate').onclick = () => {
-    document.getElementById('menu').classList.add('hidden');
-    document.getElementById('createForm').classList.remove('hidden');
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('createForm').style.display = 'block';
 };
 document.getElementById('btnJoin').onclick = () => {
-    document.getElementById('menu').classList.add('hidden');
-    document.getElementById('joinForm').classList.remove('hidden');
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('joinForm').style.display = 'block';
 };
-document.querySelectorAll('.backBtn').forEach(b => b.onclick = initLobby);
+document.getElementById('btnInstructions').onclick = () => {
+    document.getElementById('instructionsPanel').style.display = 'block';
+};
+document.querySelectorAll('.backBtn').forEach(b => {
+    b.addEventListener('click', () => {
+        document.getElementById('createForm').style.display = 'none';
+        document.getElementById('joinForm').style.display = 'none';
+        document.getElementById('menu').style.display = 'block';
+    });
+});
+document.querySelector('.closeInstructions')?.addEventListener('click', () => {
+    document.getElementById('instructionsPanel').style.display = 'none';
+});
 
-// إنشاء غرفة
 document.getElementById('confirmCreate').onclick = () => {
     const name = document.getElementById('createName').value.trim();
     const total = +document.getElementById('totalPlayers').value;
     const mafia = +document.getElementById('mafiaCount').value;
-    if (!name) return showError('أدخل اسمك');
-    if (total < 5 || mafia < 1 || mafia >= total - 2) return showError('إعدادات غير صحيحة');
+    if (!name || total < 5 || mafia < 1 || mafia >= total - 2) return alert('بيانات غير صحيحة');
     socket.emit('createRoom', { playerName: name, totalPlayers: total, mafiaCount: mafia }, (res) => {
-        if (res.error) return showError(res.error);
+        if (res.error) alert(res.error);
     });
 };
 
-// انضمام
 document.getElementById('confirmJoin').onclick = () => {
     const name = document.getElementById('joinName').value.trim();
     const code = document.getElementById('roomCode').value.trim().toUpperCase();
-    if (!name || !code) return showError('أدخل اسمك وكود الغرفة');
+    if (!name || !code) return alert('أدخل الاسم والكود');
     socket.emit('joinRoom', { playerName: name, roomId: code }, (res) => {
-        if (res.error) return showError(res.error);
+        if (res.error) alert(res.error);
     });
 };
 
-// زر بدء فوري (يظهر للمضيف فقط)
 document.getElementById('btnStart').onclick = () => {
     socket.emit('forceStart', { roomId });
 };
 
-// زر المغادرة
 document.getElementById('btnLeave').onclick = () => {
     if (roomId) socket.emit('leaveRoom', { roomId });
     clearSession();
     location.reload();
 };
 
-// استقبال التوكن ودخول غرفة الانتظار
+// ------------------ استقبال أحداث الخادم ------------------
 socket.on('authenticated', ({ playerToken: tok, roomId: rid, yourName: name }) => {
-    playerToken = tok;
-    roomId = rid;
-    myName = name;
+    playerToken = tok; roomId = rid; myName = name;
     sessionStorage.setItem('playerToken', tok);
     sessionStorage.setItem('roomId', rid);
-    document.getElementById('createForm').classList.add('hidden');
-    document.getElementById('joinForm').classList.add('hidden');
-    document.getElementById('waitingRoom').classList.remove('hidden');
+    document.getElementById('createForm').style.display = 'none';
+    document.getElementById('joinForm').style.display = 'none';
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('waitingRoom').style.display = 'block';
     document.getElementById('roomIdDisplay').textContent = rid;
-    document.getElementById('btnStart').classList.add('hidden'); // سيظهر للمضيف لاحقاً
+    document.getElementById('btnStart').style.display = isHost ? 'inline-block' : 'none';
     document.getElementById('waitingMsg').textContent = 'في انتظار اللاعبين...';
 });
 
 socket.on('youAreHost', () => {
     isHost = true;
-    document.getElementById('btnStart').classList.remove('hidden');
+    document.getElementById('btnStart').style.display = 'inline-block';
 });
 
 socket.on('playerList', (players) => {
-    const container = document.getElementById('playerList');
-    container.innerHTML = players.map(p => `<div>${p.name} ${p.disconnected ? '⚫' : ''}</div>`).join('');
-    // إذا كان المضيف والعدد >=5 يظهر زر البدء
-    if (isHost && players.length >= 5) {
-        document.getElementById('btnStart').classList.remove('hidden');
-    }
+    document.getElementById('playerList').innerHTML = players.map(p => `<div>${p.name} ${p.disconnected ? '⚫' : ''}</div>`).join('');
+    if (isHost && players.length >= 5) document.getElementById('btnStart').style.display = 'inline-block';
 });
 
 socket.on('gameStarting', ({ message }) => {
     document.getElementById('waitingMsg').textContent = message;
 });
-socket.on('countdown', (sec) => document.getElementById('waitingMsg').textContent = `تبدأ بعد ${sec} ثانية`);
+socket.on('countdown', (sec) => {
+    document.getElementById('waitingMsg').textContent = `تبدأ بعد ${sec} ثانية`;
+});
 
 socket.on('gameInit', (data) => {
     myRole = data.role;
     myName = data.yourName;
     myAlive = true;
     document.getElementById('logList').innerHTML = '';
-    lobbyScreen.classList.add('hidden');
-    gameScreen.classList.add('active');
+    showScreen('gameScreen');
     showGamePanel('blackScreen');
     document.getElementById('narratorMsg').textContent = 'اللعبة بدأت!';
 });
 
-// ---------- أحداث اللعبة ----------
+// ------------------ أحداث الليل ------------------
 socket.on('nightStart', (msg) => {
-    hideGamePanels();
     showGamePanel('blackScreen');
     document.getElementById('narratorMsg').textContent = msg;
 });
@@ -180,7 +176,7 @@ socket.on('mafiaTurnMultiple', ({ message, mafiaMembers }) => {
     showGamePanel('mafiaMultiPanel');
     document.getElementById('mafiaTeam').textContent = 'الفريق: ' + mafiaMembers.join(', ');
     document.getElementById('mafiaReadyBtn').disabled = true;
-    document.getElementById('mafiaReadyBtn').textContent = 'جاهز للتصويت (مقفل 30 ث)';
+    document.getElementById('mafiaReadyBtn').textContent = 'جاهز للتصويت (مقفل)';
     document.getElementById('mafiaReadyStatus').textContent = '';
     document.getElementById('mafiaChatMessages').innerHTML = '';
 });
@@ -191,10 +187,12 @@ socket.on('enableReadyButton', () => {
     btn.textContent = 'جاهز للتصويت';
     document.getElementById('mafiaReadyStatus').textContent = 'بإمكانك الضغط على جاهز';
 });
+
 document.getElementById('mafiaReadyBtn').onclick = () => socket.emit('mafiaReady', { roomId });
 socket.on('mafiaReadyUpdate', ({ name, ready }) => {
     document.getElementById('mafiaReadyStatus').textContent += `${name} جاهز. `;
 });
+
 document.getElementById('sendMafiaChat').onclick = () => {
     const msg = document.getElementById('mafiaChatInput').value.trim();
     if (msg) { socket.emit('mafiaChatMessage', { roomId, message: msg }); document.getElementById('mafiaChatInput').value = ''; }
@@ -254,6 +252,7 @@ socket.on('nightResult', ({ killed, saved, log }) => {
     showGamePanel('blackScreen');
 });
 
+// ------------------ تصويت النهار ------------------
 socket.on('startVoting', ({ message, players }) => {
     showGamePanel('votePanel');
     document.getElementById('voteMsg').textContent = message;
@@ -291,19 +290,19 @@ socket.on('gameOver', ({ winner, message }) => {
     document.getElementById('playAgain').onclick = () => { clearSession(); location.reload(); };
 });
 
-socket.on('errorMessage', showError);
+socket.on('errorMessage', (msg) => alert(msg));
 
+// ------------------ سجل الأحداث ------------------
 function updateLog(entries) {
     const list = document.getElementById('logList');
-    entries.forEach(e => { const li = document.createElement('li'); li.textContent = e; list.appendChild(li); });
+    entries.forEach(e => {
+        const li = document.createElement('li');
+        li.textContent = e;
+        list.appendChild(li);
+    });
 }
 
-// ---------- التعليمات ----------
-document.getElementById('btnInstructions').onclick = () => {
-    document.getElementById('instructionsPanel').classList.toggle('hidden');
-};
-
-// ---------- بدء التطبيق ----------
+// ------------------ بدء التطبيق ------------------
 function tryReauth() {
     if (playerToken && roomId) {
         socket.emit('reauthenticate', { roomId, playerToken }, (res) => {
@@ -311,8 +310,7 @@ function tryReauth() {
                 myName = res.yourName;
                 myRole = res.role;
                 myAlive = res.alive;
-                lobbyScreen.classList.add('hidden');
-                gameScreen.classList.add('active');
+                showScreen('gameScreen');
                 if (res.state === 'ended') showGamePanel('gameOverPanel');
                 else showGamePanel('blackScreen');
             } else {
@@ -325,16 +323,7 @@ function tryReauth() {
     }
 }
 
-function clearSession() {
-    sessionStorage.removeItem('playerToken');
-    sessionStorage.removeItem('roomId');
-    playerToken = null; roomId = null;
-}
-
 if (playerToken && roomId) tryReauth();
 else showWakeup();
-document.getElementById('closeInstructions').onclick = () => {
-    document.getElementById('instructionsPanel').classList.add('hidden');
-};
-// تسجيل Service Worker
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
