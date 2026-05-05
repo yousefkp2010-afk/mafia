@@ -396,7 +396,6 @@ io.on('connection', (socket) => {
         });
         room.phaseTimer = setTimeout(() => {
             if (room.currentPhase === 'police') {
-                room.nightActions.policeInvestigate = null;
                 resolveNight(roomId);
             }
         }, TIMEOUTS.POLICE);
@@ -411,6 +410,20 @@ io.on('connection', (socket) => {
         if (!target) return;
         room.nightActions.policeInvestigate = targetId;
         io.to(police.socketId).emit('investigationResult', { name: target.name, role: target.role });
+        // لا ننتقل فوراً، ننتظر إقرار الشرطي
+        clearTimeout(room.phaseTimer);
+        room.phaseTimer = setTimeout(() => {
+            if (room.currentPhase === 'police') {
+                resolveNight(roomId);
+            }
+        }, TIMEOUTS.POLICE);
+    });
+
+    socket.on('policeAcknowledged', ({ roomId }) => {
+        const room = rooms[roomId];
+        if (!room || room.currentPhase !== 'police') return;
+        const police = getPlayerBySocket(room, socket);
+        if (!police || police.role !== ROLES.POLICE || !police.alive) return;
         clearTimeout(room.phaseTimer);
         resolveNight(roomId);
     });
@@ -423,7 +436,7 @@ io.on('connection', (socket) => {
             if (doctorSave === mafiaTarget) {
                 room.savedByDoctor = true;
                 room.killedTonight = null;
-                room.log.push(`الطبيب حمى ${room.players.find(p => p.token === mafiaTarget)?.name}.`);
+                room.log.push('محاولة اغتيال فاشلة.');
             } else {
                 room.savedByDoctor = false;
                 room.killedTonight = mafiaTarget;
@@ -431,6 +444,7 @@ io.on('connection', (socket) => {
                 if (victim) {
                     victim.alive = false;
                     room.log.push(`المافيا قتلت ${victim.name}.`);
+                    io.to(victim.socketId).emit('youAreDead', { reason: 'قتلتك المافيا ليلاً.' });
                 }
             }
         } else if (mafiaTarget === 'failed_disagreement') {
@@ -517,6 +531,7 @@ io.on('connection', (socket) => {
                 expelled.alive = false;
                 io.to(roomId).emit('votingResult', { expelled: expelled.name, role: expelled.role, message: `${expelled.name} طُرد.` });
                 room.log.push(`${expelled.name} (${expelled.role}) طُرد.`);
+                io.to(expelled.socketId).emit('youAreDead', { reason: `تم طردك بالتصويت.` });
             }
         }
         if (checkWinCondition(roomId)) return;
@@ -569,5 +584,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`السيرفر يعمل على المنفذ ${PORT}`);
-    console.log("V1.0.0")
 });
