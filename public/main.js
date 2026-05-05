@@ -3,7 +3,8 @@ let playerToken = sessionStorage.getItem('playerToken');
 let roomId = sessionStorage.getItem('roomId');
 let myName = '', myRole = '', myAlive = true;
 let isHost = false;
-
+let v = 1
+console.log(v)
 // ------------------ دوال المساعدة ------------------
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
