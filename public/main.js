@@ -3,8 +3,9 @@ let playerToken = sessionStorage.getItem('playerToken');
 let roomId = sessionStorage.getItem('roomId');
 let myName = '', myRole = '', myAlive = true;
 let isHost = false;
-let v = 1
+let v = 1.1
 console.log(v)
+
 // ------------------ دوال المساعدة ------------------
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -243,7 +244,10 @@ socket.on('policeTurn', ({ message, players }) => {
 socket.on('investigationResult', ({ name, role }) => {
     showGamePanel('investPanel');
     document.getElementById('investResult').textContent = `دور ${name}: ${role}`;
-    document.getElementById('investOk').onclick = () => showGamePanel('blackScreen');
+    document.getElementById('investOk').onclick = () => {
+        showGamePanel('blackScreen');
+        socket.emit('policeAcknowledged', { roomId });
+    };
 });
 
 socket.on('nightResult', ({ killed, saved, log }) => {
@@ -289,6 +293,16 @@ socket.on('gameOver', ({ winner, message }) => {
     showGamePanel('gameOverPanel');
     document.getElementById('gameOverTitle').textContent = message;
     document.getElementById('playAgain').onclick = () => { clearSession(); location.reload(); };
+});
+
+socket.on('youAreDead', ({ reason }) => {
+    myAlive = false;
+    showGamePanel('deadPanel');
+    document.getElementById('deadMessage').textContent = reason;
+    document.getElementById('deadOk').onclick = () => {
+        showGamePanel('blackScreen');
+        document.getElementById('narratorMsg').textContent = 'أنت ميت الآن. يمكنك المشاهدة فقط.';
+    };
 });
 
 socket.on('errorMessage', (msg) => alert(msg));
